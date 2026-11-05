@@ -129,3 +129,17 @@ describe("rate limiting", () => {
   });
 });
 
+
+describe("livekit token", () => {
+  it("issues a valid camera-only JWT when LiveKit is configured", async () => {
+    const { issueMediaToken } = await import("../src/media/livekit.js");
+    Object.assign(config.livekit, { url: "wss://x.livekit.cloud", apiKey: "devkey", apiSecret: "a-long-enough-secret-for-hs256-0123456789" });
+    const r = await issueMediaToken({ sessionId: "s1", roomId: "main-library", displayName: "A", title: "t", description: "d", joinedAt: 1, lastHeartbeat: 1, connectionState: "connected", mediaState: "pending" });
+    expect(r.mock).toBe(false);
+    const claims = JSON.parse(Buffer.from(r.token!.split(".")[1], "base64url").toString());
+    expect(claims.sub).toBe("s1");
+    expect(claims.video.canPublishSources).toEqual(["camera"]);
+    expect(claims.video.canPublishData).toBe(false);
+    Object.assign(config.livekit, { url: "", apiKey: "", apiSecret: "" });
+  });
+});

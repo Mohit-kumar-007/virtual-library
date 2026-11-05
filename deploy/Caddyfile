@@ -1,0 +1,4 @@
+# Automatic HTTPS (Let's Encrypt). Used only with: docker compose --profile https up -d --build
+{$DOMAIN} {
+  reverse_proxy web:80
+}

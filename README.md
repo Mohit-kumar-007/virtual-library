@@ -46,15 +46,26 @@ npm run e2e -w client
 The E2E suite uses Chromium's fake camera. It covers join/leave, timers, presence across two browsers, leaderboard, reconnect grace, expiry, camera denied, mobile layout and dark mode.
 Real SFU video can only be verified with real LiveKit credentials (see checklist below).
 
-## Deploy (EC2 + Nginx + LiveKit Cloud)
+## Run with Docker (whole stack, one command)
 
-1. **LiveKit Cloud:** create a project at https://cloud.livekit.io, copy URL / API key / secret.
-2. **EC2:** Ubuntu, open ports 80/443. Install Docker, Nginx, certbot, Node 22.
-3. `git clone` the repo, `cp .env.example .env`, fill in values (`ALLOW_MOCK_MEDIA=false`, `CLIENT_ORIGIN=https://your-domain.com`).
-4. `docker compose up -d --build` (API on 127.0.0.1:4000 + Redis).
-5. Build the frontend: `npm ci && npm run build -w client`, then `sudo mkdir -p /var/www/virtual-library && sudo cp -r client/dist/* /var/www/virtual-library/`.
-6. Point your domain's DNS A record to the EC2 IP, get a cert (`sudo certbot certonly --nginx -d your-domain.com`), install `deploy/nginx.conf` (replace `your-domain.com`), `sudo nginx -t && sudo systemctl reload nginx`.
-7. Open https://your-domain.com in two browsers and join from both.
+```bash
+cp .env.example .env     # fill in LIVEKIT_* values; set NODE_ENV/REDIS are overridden by compose
+docker compose up -d --build
+```
+Open http://localhost:8080 (change with `WEB_PORT` in `.env`). Services: `web` (Nginx + built React app), `api` (Node), `redis`.
+Useful: `docker compose logs -f api`, `docker compose ps`, `docker compose down`.
+
+## Deploy (EC2 + Docker + LiveKit Cloud)
+
+1. **LiveKit Cloud:** create a project, copy URL / API key / secret.
+2. **EC2:** Ubuntu 22.04+, security group open for ports 22, 80, 443. Install Docker (`curl -fsSL https://get.docker.com | sh`).
+3. Point your domain's DNS **A record** to the EC2 public IP.
+4. `git clone` the repo, `cp .env.example .env` and set:
+   `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `CLIENT_ORIGIN=https://your-domain.com`, `ALLOW_MOCK_MEDIA=false`, `ADMIN_TOKEN=<long random>`, `DOMAIN=your-domain.com`.
+5. `docker compose --profile https up -d --build` — Caddy obtains the HTTPS certificate automatically.
+6. Open https://your-domain.com from two devices and join.
+
+(Alternative without Docker for the web tier: `deploy/nginx.conf` is a host-level Nginx + certbot example, matching the architecture diagram.)
 
 Frontend on Vercel/Cloudflare instead: deploy `client/` with build `npm run build`, output `dist`, env `VITE_API_URL=https://api.your-domain.com`, and set `CLIENT_ORIGIN` on the server to the frontend URL.
 

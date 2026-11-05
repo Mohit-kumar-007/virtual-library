@@ -2,7 +2,12 @@ import { config, livekitConfigured } from "./config.js";
 import { createStore } from "./redis/store.js";
 import { createApp } from "./app.js";
 
-const store = createStore(config.redisUrl);
+process.on("unhandledRejection", (e) => console.error("[server] unhandled rejection:", e));
+
+const store = await createStore(config.redisUrl, config.nodeEnv === "production").catch((e: Error) => {
+  console.error(`[server] ${e.message}`);
+  process.exit(1);
+});
 const { http, svc, io } = createApp(store);
 
 http.listen(config.port, () => {

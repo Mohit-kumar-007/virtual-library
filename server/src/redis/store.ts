@@ -82,9 +82,22 @@ export class RedisStore implements SessionStore {
   async close() { await this.r.quit(); }
 }
 
-export function createStore(redisUrl: string): SessionStore {
+export async function createStore(redisUrl: string, isProduction = false): Promise<SessionStore> {
   if (!redisUrl) {
     console.warn("[store] REDIS_URL not set — using in-memory store (single instance only)");
+    return new MemoryStore();
+  }
+  // Probe once so a missing Redis gives a clear message instead of a crash loop.
+  const probe = new Redis(redisUrl, { lazyConnect: true, retryStrategy: () => null, connectTimeout: 3000, maxRetriesPerRequest: 0 });
+  probe.on("error", () => {});
+  try {
+    await probe.connect();
+    await probe.quit();
+  } catch {
+    probe.disconnect();
+    const msg = `Cannot reach Redis at ${redisUrl}`;
+    if (isProduction) throw new Error(`${msg}. Start Redis or fix REDIS_URL.`);
+    console.warn(`[store] ${msg} — falling back to the in-memory store (dev only). Clear REDIS_URL in server/.env to silence this.`);
     return new MemoryStore();
   }
   const r = new Redis(redisUrl, { maxRetriesPerRequest: 3 });
