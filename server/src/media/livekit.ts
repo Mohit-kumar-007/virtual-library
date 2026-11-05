@@ -1,4 +1,5 @@
 import { AccessToken, RoomServiceClient } from "livekit-server-sdk";
+import { TrackSource } from "@livekit/protocol";
 import { config, livekitConfigured } from "../config.js";
 import type { Session } from "../types.js";
 
@@ -25,7 +26,7 @@ export async function issueMediaToken(s: Session): Promise<MediaTokenResult> {
     room: s.roomId,
     roomJoin: true,
     canPublish: true,
-    canPublishSources: ["camera" as never], // camera only; no mic / screenshare
+    canPublishSources: [TrackSource.CAMERA], // camera only; no mic / screenshare
     canSubscribe: true,
     canPublishData: false,
   });
