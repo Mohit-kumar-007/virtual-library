@@ -2,7 +2,6 @@ import { AccessToken, RoomServiceClient } from "livekit-server-sdk";
 import { TrackSource } from "@livekit/protocol";
 import { config, livekitConfigured } from "../config.js";
 import type { Session } from "../types.js";
-import { TrackSource } from "@livekit/protocol";
 
 export interface MediaTokenResult {
   mock: boolean;
