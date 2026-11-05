@@ -114,8 +114,10 @@ export function useRoom() {
           connRef.current = mc; setConn(mc);
         }
       } catch (e) {
+        console.error("[media] failed to connect:", e);
         await mc?.disconnect();
-        throw new ApiError("Couldn't connect to the video server. Please try again.", 503);
+        const detail = e instanceof ApiError ? e.message : (e as Error)?.message;
+        throw new ApiError(`Couldn't connect to the video server${detail ? ` (${detail})` : ""}. Check LIVEKIT_URL / keys and try again.`, 503);
       }
       // 5. Socket join -> presence broadcast.
       const r = await emitAck<{ ok: boolean; error?: string } & RoomSnapshot>(socket, "join", { sessionId: s.sessionId });
