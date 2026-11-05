@@ -1,15 +1,43 @@
-# Production-ish stack for a single EC2 box: API + Redis. Nginx runs on the host (deploy/nginx.conf)
-# and serves client/dist. See README "Deploy".
+# Whole stack with one command:  docker compose up -d --build
+#   web   = Nginx + built React app  (http://localhost:8080 by default)
+#   api   = Node/Express/Socket.IO
+#   redis = ephemeral presence store
+#   caddy = optional automatic HTTPS for a real domain (profile "https")
+# Reads secrets from ./.env (copy .env.example). Never commit .env.
 services:
+  web:
+    build: { context: ., dockerfile: client/Dockerfile }
+    ports: ["${WEB_PORT:-8080}:80"]
+    depends_on: [api]
+    restart: unless-stopped
+
   api:
     build: { context: ., dockerfile: server/Dockerfile }
     env_file: .env
     environment:
+      NODE_ENV: production
+      PORT: "4000"
       REDIS_URL: redis://redis:6379
-    ports: ["127.0.0.1:4000:4000"]
+    expose: ["4000"]
     depends_on: [redis]
     restart: unless-stopped
+
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--save", "", "--appendonly", "no"]   # ephemeral by design (PRD §19)
+    command: ["redis-server", "--save", "", "--appendonly", "no"]   # ephemeral by design
     restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["https"]
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [web]
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
