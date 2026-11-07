@@ -1,18 +1,113 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
-@theme {
-  --color-paper: #f6f3ec;
-  --color-ink: #1f2a24;
-  --color-live: #16a34a;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+/* Theme: a quiet reading room. Warm paper, library-green, brass lamp light.
+   Semantic tokens switch with the .dark class, so components never need dark: variants. */
+:root {
+  --c-bg: #f4efe4;
+  --c-surface: #fbf8f1;
+  --c-sunken: #ebe4d3;
+  --c-ink: #1d2a22;
+  --c-muted: #5d6b61;
+  --c-line: #d9d0bb;
+  --c-brand: #1f4d3a;
+  --c-brand-hover: #173b2c;
+  --c-brand-ink: #f7f3e8;
+  --c-brass: #a9731f;
+  --c-brass-soft: #f1e1bd;
+  --c-live: #2f9e5e;
+  --c-danger: #a3322b;
+  --c-danger-soft: #f6dfdb;
+  --c-notice-soft: #f6e8c6;
+  --c-notice-ink: #5b3f0c;
+  --c-info-soft: #dcebe4;
+  --c-info-ink: #1d4a38;
+  --c-shadow: 0 1px 2px rgb(40 30 10 / .08), 0 6px 18px -8px rgb(40 30 10 / .18);
+}
+.dark {
+  --c-bg: #0f1612;
+  --c-surface: #17211b;
+  --c-sunken: #0b110e;
+  --c-ink: #e9eadf;
+  --c-muted: #9fada4;
+  --c-line: #2a382f;
+  --c-brand: #5fb58a;
+  --c-brand-hover: #79c9a0;
+  --c-brand-ink: #0d1a13;
+  --c-brass: #e0b05a;
+  --c-brass-soft: #2a2412;
+  --c-live: #5fd08f;
+  --c-danger: #e0786f;
+  --c-danger-soft: #3a1c19;
+  --c-notice-soft: #3a2f16;
+  --c-notice-ink: #f1d9a0;
+  --c-info-soft: #1b3027;
+  --c-info-ink: #b9e0cc;
+  --c-shadow: 0 1px 2px rgb(0 0 0 / .4), 0 8px 22px -10px rgb(0 0 0 / .6);
+}
+
+@theme inline {
+  --color-bg: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-sunken: var(--c-sunken);
+  --color-ink: var(--c-ink);
+  --color-muted: var(--c-muted);
+  --color-line: var(--c-line);
+  --color-brand: var(--c-brand);
+  --color-brand-hover: var(--c-brand-hover);
+  --color-brand-ink: var(--c-brand-ink);
+  --color-brass: var(--c-brass);
+  --color-brass-soft: var(--c-brass-soft);
+  --color-live: var(--c-live);
+  --color-danger: var(--c-danger);
+  --color-danger-soft: var(--c-danger-soft);
+  --color-notice-soft: var(--c-notice-soft);
+  --color-notice-ink: var(--c-notice-ink);
+  --color-info-soft: var(--c-info-soft);
+  --color-info-ink: var(--c-info-ink);
+  --shadow-card: var(--c-shadow);
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Fraunces", ui-serif, Georgia, Cambria, "Times New Roman", serif;
 }
 
 html, body, #root { height: 100%; }
-body { @apply bg-paper text-ink antialiased; }
-.dark body { background: #0f1512; color: #e7ece8; }
+body {
+  background-color: var(--c-bg);
+  /* faint reading-lamp glow from the top, so the page is not one flat colour */
+  background-image: radial-gradient(900px 380px at 50% -120px, var(--c-brass-soft), transparent 70%);
+  background-repeat: no-repeat;
+  color: var(--c-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
 .tabnum { font-variant-numeric: tabular-nums; }
+
+/* Buttons: one pair (primary / danger) plus ghost, used everywhere. */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: .6rem; font-weight: 600;
+  font-size: .875rem; line-height: 1.25rem; padding: .5rem 1rem; transition: background-color .15s, transform .15s, box-shadow .15s; }
+.btn:active:not(:disabled) { transform: translateY(1px) scale(.99); }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+.btn-primary { background: var(--c-brand); color: var(--c-brand-ink); box-shadow: var(--c-shadow); }
+.btn-primary:hover:not(:disabled) { background: var(--c-brand-hover); }
+.btn-danger { background: var(--c-danger); color: #fff; }
+.btn-danger:hover:not(:disabled) { filter: brightness(.92); }
+.btn-ghost { color: var(--c-ink); }
+.btn-ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--c-ink) 8%, transparent); }
+
+.card { background: var(--c-surface); border: 1px solid var(--c-line); box-shadow: var(--c-shadow); }
+.tile-lift { transition: transform .2s ease; }
+.tile-lift:hover { transform: translateY(-2px); }
+.tile-video { transition: transform .4s ease; }
+.tile-lift:hover .tile-video { transform: scale(1.02); }
+
+:where(a, button, input, textarea):focus-visible { outline: 2px solid var(--c-brass); outline-offset: 2px; }
+
 @keyframes pulse-live { 0%,100% { opacity: 1 } 50% { opacity: .45 } }
 .live-dot { animation: pulse-live 2.4s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+@keyframes rise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+.enter { animation: rise .45s ease both; }
+@media (prefers-reduced-motion: reduce) {
+  .live-dot, .enter { animation: none; }
+  .tile-lift, .tile-video, .btn { transition: none; }
+  .tile-lift:hover, .tile-lift:hover .tile-video { transform: none; }
+}

@@ -40,17 +40,17 @@ export default function App() {
         onToggleLeaderboard={() => setLeaderboard((v) => !v)} onToggleDark={() => setDark((d) => !d)} onJoin={openJoin} onLeave={room.leave} />
 
       {!room.online && (
-        <div className="bg-red-600 px-4 py-1.5 text-center text-sm text-white" role="status" data-testid="offline-banner">
+        <div className="bg-danger px-4 py-1.5 text-center text-sm text-white" role="status" data-testid="offline-banner">
           {room.phase === "joined" ? "Connection lost — reconnecting. Your session is kept for a short while." : "Library server unavailable. Retrying…"}
         </div>
       )}
       {room.notice && (
-        <div className="flex items-center justify-center gap-3 bg-amber-100 px-4 py-2 text-sm text-amber-900" role="status" data-testid="notice">
+        <div className="flex items-center justify-center gap-3 bg-notice-soft px-4 py-2 text-sm text-notice-ink" role="status" data-testid="notice">
           {room.notice}<button onClick={room.dismissNotice} className="underline">Dismiss</button>
         </div>
       )}
       {room.mockMedia && room.phase === "joined" && (
-        <div className="bg-sky-100 px-4 py-1.5 text-center text-xs text-sky-900" data-testid="mock-banner">
+        <div className="bg-info-soft px-4 py-1.5 text-center text-xs text-info-ink" data-testid="mock-banner">
           Demo mode: video server not configured — other participants' video isn't streamed. Presence and timers are live.
         </div>
       )}
@@ -63,8 +63,8 @@ export default function App() {
         {leaderboard && <Leaderboard participants={room.participants} meId={meId} now={now} serverOffset={room.serverOffset} onClose={() => setLeaderboard(false)} />}
       </div>
 
-      <footer className="px-4 py-3 text-center text-xs opacity-60">
-        <button className="underline" onClick={() => setLegal("terms")}>Terms</button> · <button className="underline" onClick={() => setLegal("privacy")}>Privacy</button>
+      <footer className="border-t border-line px-4 py-4 text-center text-xs text-muted">
+        <button className="underline-offset-2 hover:text-ink hover:underline" onClick={() => setLegal("terms")}>Terms</button> · <button className="underline-offset-2 hover:text-ink hover:underline" onClick={() => setLegal("privacy")}>Privacy</button>
       </footer>
 
       {showJoin && room.phase !== "joined" && <JoinModal phase={room.phase} onSubmit={room.join} onClose={() => setShowJoin(false)} serverDown={!room.online} />}
