@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { Participant, MySession } from "../types/participant";
 import type { JoinForm } from "../utils/validation";
 import type { RemoteTrack } from "livekit-client";
@@ -5,6 +6,8 @@ import { StudyTile } from "./StudyTile";
 import { OwnStudyTile } from "./OwnStudyTile";
 import { ShelfIllustration } from "./Icons";
 import { formatHMS } from "../utils/time";
+import { useGridColumns } from "../hooks/useGridColumns";
+import { maxTileWidth } from "../utils/gridLayout";
 
 /** Max participants rendered as full tiles (PRD §9/§23: never render unlimited video elements). */
 export const MAX_VIDEO_TILES = 30;
@@ -15,15 +18,27 @@ interface Props {
   onJoin: () => void; onLeave: () => void;
 }
 
+/**
+ * Who gets a tile. Up to MAX_VIDEO_TILES others are shown. In a bigger room each person sees the people closest
+ * to them in join order (about half older, half newer) instead of everyone seeing the same oldest 30 - otherwise
+ * everyone past the first 30 would be invisible to the whole room. People who have not joined yet see the oldest 30.
+ * `all` is sorted by join time.
+ */
 export function visibleParticipants(all: Participant[], meId: string | undefined) {
   const others = all.filter((p) => p.sessionId !== meId);
-  return { shown: others.slice(0, MAX_VIDEO_TILES), hidden: others.slice(MAX_VIDEO_TILES) };
+  if (others.length <= MAX_VIDEO_TILES) return { shown: others, hidden: [] as Participant[] };
+  const myRank = meId ? all.findIndex((p) => p.sessionId === meId) : -1;
+  const start = myRank < 0 ? 0 : Math.min(Math.max(myRank - Math.floor(MAX_VIDEO_TILES / 2), 0), others.length - MAX_VIDEO_TILES);
+  return { shown: others.slice(start, start + MAX_VIDEO_TILES), hidden: [...others.slice(0, start), ...others.slice(start + MAX_VIDEO_TILES)] };
 }
 
 export function StudyGrid(p: Props) {
   const { shown, hidden } = visibleParticipants(p.participants, p.me?.sessionId);
   const timer = (j: number) => formatHMS(p.now + p.serverOffset - j);
   const empty = shown.length === 0 && !p.me;
+  const gridRef = useRef<HTMLDivElement>(null);
+  const hasOwn = Boolean(p.me && p.myInfo);
+  const cols = useGridColumns(gridRef, shown.length, hasOwn); // tiles grow for small groups and shrink as more join
 
   if (empty) {
     return (
@@ -38,9 +53,9 @@ export function StudyGrid(p: Props) {
 
   return (
     <div className="p-3 sm:p-5">
-      <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" data-testid="grid">
+      <div ref={gridRef} className="grid items-start justify-center gap-3 sm:gap-4" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, ${maxTileWidth(hasOwn)}px))` }} data-testid="grid">
         {p.me && p.myInfo && (
-          <OwnStudyTile info={p.myInfo} timerText={timer(p.me.joinedAt)} stream={p.localStream} error={p.mediaError} onLeave={p.onLeave} />
+          <OwnStudyTile info={p.myInfo} timerText={timer(p.me.joinedAt)} stream={p.localStream} error={p.mediaError} cols={cols} onLeave={p.onLeave} />
         )}
         {shown.map((x) => <StudyTile key={x.sessionId} p={x} timerText={timer(x.joinedAt)} track={p.tracks.get(x.sessionId)} />)}
       </div>

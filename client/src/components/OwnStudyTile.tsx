@@ -2,11 +2,11 @@ import { SessionTimer } from "./SessionTimer";
 import { VideoView } from "./VideoView";
 import type { JoinForm } from "../utils/validation";
 
-interface Props { info: JoinForm; timerText: string; stream: MediaStream | null; error: string | null; onLeave: () => void; }
+interface Props { info: JoinForm; timerText: string; stream: MediaStream | null; error: string | null; cols: number; onLeave: () => void; }
 
-export function OwnStudyTile({ info, timerText, stream, error, onLeave }: Props) {
+export function OwnStudyTile({ info, timerText, stream, error, cols, onLeave }: Props) {
   return (
-    <article className="card enter col-span-2 flex flex-col overflow-hidden rounded-2xl border-2 !border-brass" data-testid="own-tile">
+    <article className="card enter flex flex-col overflow-hidden rounded-2xl border-2 !border-brass" style={{ gridColumn: `span ${Math.min(2, cols)}`, gridRow: `span ${cols >= 2 ? 2 : 1}` }} data-testid="own-tile">
       <div className="relative aspect-video overflow-hidden bg-sunken">
         <VideoView stream={stream} mirror />
         <span className="absolute left-2.5 top-2.5 rounded-full bg-brass px-2.5 py-0.5 text-xs font-bold tracking-wide text-brand-ink">YOU</span>
@@ -23,7 +23,7 @@ export function OwnStudyTile({ info, timerText, stream, error, onLeave }: Props)
             <SessionTimer text={timerText} className="text-2xl font-bold" />
           </div>
         </div>
-        <div className="text-sm">{info.description}</div>
+        <div className="break-words text-sm [overflow-wrap:anywhere]">{info.description}</div>
         <button onClick={onLeave} data-testid="leave-button" className="btn btn-danger w-full">LEAVE</button>
       </div>
     </article>

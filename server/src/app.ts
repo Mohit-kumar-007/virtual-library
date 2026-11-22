@@ -11,7 +11,7 @@ import type { SessionStore } from "./redis/store.js";
 
 export function createApp(store: SessionStore) {
   const app = express();
-  app.set("trust proxy", 1); // behind Nginx
+  app.set("trust proxy", config.trustProxy); // reverse proxies in front of us (TRUST_PROXY, default 1 = Nginx)
   app.use(helmet());
   app.use(cors({ origin: config.clientOrigins }));
   // sendBeacon posts text/plain; accept it as JSON too.

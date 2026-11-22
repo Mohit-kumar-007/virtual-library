@@ -18,6 +18,7 @@ services:
       NODE_ENV: production
       PORT: "4000"
       REDIS_URL: redis://redis:6379
+      TRUST_PROXY: ${TRUST_PROXY:-1}   # 1 = Nginx only; set TRUST_PROXY=2 in .env when using the Caddy https profile
     expose: ["4000"]
     depends_on: [redis]
     restart: unless-stopped

@@ -1,5 +1,5 @@
 import {
-  Room, RoomEvent, Track, VideoQuality,
+  Room, RoomEvent, Track,
   type RemoteTrack, type RemoteTrackPublication, type RemoteParticipant,
 } from "livekit-client";
 
@@ -18,9 +18,9 @@ export class MediaConnection {
     this.room
       .on(RoomEvent.TrackPublished, refresh)
       .on(RoomEvent.ParticipantConnected, refresh)
-      .on(RoomEvent.TrackSubscribed, (t: RemoteTrack, pub: RemoteTrackPublication, p: RemoteParticipant) => {
+      .on(RoomEvent.TrackSubscribed, (t: RemoteTrack, _pub: RemoteTrackPublication, p: RemoteParticipant) => {
         if (t.kind !== Track.Kind.Video) return;
-        pub.setVideoQuality(VideoQuality.LOW); // tiles are small
+        // Quality follows each tile's on-screen size (adaptiveStream): big tiles get a sharp layer, small ones a light one.
         this.tracks = new Map(this.tracks).set(p.identity, t);
         this.emit();
       })

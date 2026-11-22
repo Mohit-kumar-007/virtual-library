@@ -22,7 +22,11 @@ export class SessionService extends EventEmitter {
 
   constructor(private store: SessionStore, private now: () => number = Date.now) { super(); }
 
-  startSweeper(intervalMs = 5000) {
+  /**
+   * A silent session is flagged "reconnecting" at grace/2 and removed at grace. Sweeping every grace/4 (at most 5s)
+   * guarantees at least two sweeps fall inside that window, so users always see "Reconnecting..." before a drop.
+   */
+  startSweeper(intervalMs = Math.min(5000, Math.max(500, config.graceSeconds * 250))) {
     this.sweeper = setInterval(() => void this.sweepStale().catch(console.error), intervalMs);
     this.sweeper.unref?.();
   }

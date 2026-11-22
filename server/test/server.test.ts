@@ -1,13 +1,14 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { io as ioc, type Socket } from "socket.io-client";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../src/app.js";
 import { MemoryStore } from "../src/redis/store.js";
+import { SessionService } from "../src/services/sessionService.js";
 import { config } from "../src/config.js";
 
 const store = new MemoryStore();
-const { http, svc, io } = createApp(store);
+const { app, http, svc, io } = createApp(store);
 let url = "";
 const sockets: Socket[] = [];
 const connect = () => { const s = ioc(url, { transports: ["websocket"], forceNew: true }); sockets.push(s); return s; };
@@ -18,6 +19,9 @@ const body = { name: "Mohit", title: "CSE Student", description: "Learning FastA
 
 beforeAll(async () => {
   config.graceSeconds = 1;
+  // Tests must not depend on a developer's real server/.env: start with no LiveKit configured (mock media).
+  Object.assign(config.livekit, { url: "", apiKey: "", apiSecret: "" });
+  config.allowMockMedia = true;
   await new Promise<void>((r) => http.listen(0, r));
   url = `http://127.0.0.1:${(http.address() as AddressInfo).port}`;
 });
@@ -118,6 +122,74 @@ describe("silent network loss", () => {
     expect((await svc.get(s.sessionId))?.connectionState).toBe("connected");
     await svc.end(s.sessionId);
     config.graceSeconds = 1;
+  });
+});
+
+describe("silent user is always shown as reconnecting before being dropped", () => {
+  // With a short grace, a sweep interval that is too coarse can skip the "reconnecting" state entirely (flag at grace/2, remove at grace).
+  it.each([0, 1000, 2500, 3500, 4900])("grace 6s, user goes silent %i ms into a sweep cycle", async (phase) => {
+    vi.useFakeTimers();
+    const saved = config.graceSeconds; config.graceSeconds = 6;
+    const local = new SessionService(new MemoryStore());
+    try {
+      local.startSweeper(); // default interval follows the grace period
+      await vi.advanceTimersByTimeAsync(phase);
+      const s = await local.create({ name: "Silent", title: "t", description: "d" });
+      await local.setMediaState(s.sessionId, "publishing"); // visible to others, then no more heartbeats
+      let sawReconnecting = false, gone = false;
+      for (let t = 0; t < 15000 && !gone; t += 100) {
+        await vi.advanceTimersByTimeAsync(100);
+        const cur = await local.get(s.sessionId);
+        if (!cur) gone = true; else if (cur.connectionState === "reconnecting") sawReconnecting = true;
+      }
+      expect(gone).toBe(true);
+      expect(sawReconnecting).toBe(true);
+    } finally { local.stop(); config.graceSeconds = saved; vi.useRealTimers(); }
+  });
+});
+
+describe("capacity", () => {
+  it("turns away the next user when the room is full, then admits one after someone leaves", async () => {
+    const saved = config.roomCapacity, ids: string[] = [];
+    const join = (ip: string) => request(http).post("/api/sessions").set("X-Forwarded-For", ip).send(body);
+    config.roomCapacity = (await store.list(config.roomId)).length + 2;
+    try {
+      for (const ip of ["203.0.113.1", "203.0.113.2"]) { const r = await join(ip); expect(r.status).toBe(201); ids.push(r.body.sessionId); }
+      const full = await join("203.0.113.3");
+      expect(full.status).toBe(503);
+      expect(full.body.error).toMatch(/full/i);
+      await request(http).post(`/api/sessions/${ids[0]}/leave`);
+      const again = await join("203.0.113.4");
+      expect(again.status).toBe(201); ids.push(again.body.sessionId);
+    } finally {
+      config.roomCapacity = saved;
+      for (const id of ids) await request(http).post(`/api/sessions/${id}/leave`);
+    }
+  });
+});
+
+describe("rate limit identity behind proxies", () => {
+  const attempts = config.joinRateLimitPerMin + 2;
+  const run = async (hops: number, chain: (i: number) => string) => {
+    app.set("trust proxy", hops);
+    const statuses: number[] = [], ids: string[] = [];
+    try {
+      for (let i = 1; i <= attempts; i++) {
+        const r = await request(http).post("/api/sessions").set("X-Forwarded-For", chain(i)).send(body);
+        statuses.push(r.status); if (r.status === 201) ids.push(r.body.sessionId);
+      }
+    } finally {
+      app.set("trust proxy", config.trustProxy);
+      for (const id of ids) await request(http).post(`/api/sessions/${id}/leave`);
+    }
+    return statuses;
+  };
+  it("counts each visitor separately when TRUST_PROXY matches the chain (Caddy -> Nginx -> API)", async () => {
+    expect((await run(2, (i) => `198.51.100.${i}, 172.30.0.9`)).every((s) => s === 201)).toBe(true);
+  });
+  it("shows the bug it prevents: trusting one hop behind two proxies makes everyone share one limit", async () => {
+    const statuses = await run(1, (i) => `192.0.2.${i}, 172.30.0.8`);
+    expect(statuses[statuses.length - 1]).toBe(429);
   });
 });
 

@@ -71,6 +71,7 @@
 }
 
 html, body, #root { height: 100%; }
+html { scrollbar-gutter: stable; } /* a scrollbar appearing must not change the width the grid was sized for */
 body {
   background-color: var(--c-bg);
   /* faint reading-lamp glow from the top, so the page is not one flat colour */

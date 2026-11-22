@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "e2e": "node e2e/run.mjs"
+    "e2e": "node e2e/run.mjs",
+    "e2e:responsive": "node e2e/responsive.mjs"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.4",

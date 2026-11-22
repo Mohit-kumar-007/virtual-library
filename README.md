@@ -31,7 +31,8 @@ Open http://localhost:5173 (localhost counts as a secure context, so the camera 
 | `CLIENT_ORIGIN` | production | Your frontend origin(s), comma separated (CORS) |
 | `ALLOW_MOCK_MEDIA` | – | Set `false` in production |
 | `ADMIN_TOKEN` | optional | Enables `DELETE /api/admin/sessions/:id` with `Authorization: Bearer <token>` to remove a participant |
-| `ROOM_CAPACITY` (100), `GRACE_SECONDS` (45), `JOIN_RATE_LIMIT_PER_MIN` (10) | – | Tunables |
+| `ROOM_CAPACITY` (100), `GRACE_SECONDS` (45), `JOIN_RATE_LIMIT_PER_MIN` (30 per visitor IP) | – | Tunables |
+| `TRUST_PROXY` (1) | – | How many reverse proxies sit in front of the API: `1` = Nginx only, `2` = Caddy `https` profile then Nginx. Wrong value = every visitor shares one join limit |
 
 Client: `VITE_API_URL` only if the frontend is hosted on a different origin than the API (e.g. Vercel). Leave empty when Nginx serves both.
 
@@ -41,7 +42,8 @@ Client: `VITE_API_URL` only if the frontend is hosted on a different origin than
 npm test                              # server integration tests + client unit tests
 # End-to-end acceptance (PRD AT-01…AT-10) — needs server+client running, Playwright installed
 npm run dev &                         # in mock-media mode
-npm run e2e -w client
+npm run e2e -w client                 # user flows
+npm run e2e:responsive -w client      # layout at laptop/tablet/phone sizes with 2, 30 and 45 people in the room
 ```
 The E2E suite uses Chromium's fake camera. It covers join/leave, timers, presence across two browsers, leaderboard, reconnect grace, expiry, camera denied, mobile layout and dark mode.
 Real SFU video can only be verified with real LiveKit credentials (see checklist below).
@@ -61,7 +63,7 @@ Useful: `docker compose logs -f api`, `docker compose ps`, `docker compose down`
 2. **EC2:** Ubuntu 22.04+, security group open for ports 22, 80, 443. Install Docker (`curl -fsSL https://get.docker.com | sh`).
 3. Point your domain's DNS **A record** to the EC2 public IP.
 4. `git clone` the repo, `cp .env.example .env` and set:
-   `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `CLIENT_ORIGIN=https://your-domain.com`, `ALLOW_MOCK_MEDIA=false`, `ADMIN_TOKEN=<long random>`, `DOMAIN=your-domain.com`.
+   `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `CLIENT_ORIGIN=https://your-domain.com`, `ALLOW_MOCK_MEDIA=false`, `ADMIN_TOKEN=<long random>`, `DOMAIN=your-domain.com`, **`TRUST_PROXY=2`** (Caddy + Nginx are two proxies; with the default `1` everyone looks like one visitor and only a few people can join per minute).
 5. `docker compose --profile https up -d --build` — Caddy obtains the HTTPS certificate automatically.
 6. Open https://your-domain.com from two devices and join.
 
